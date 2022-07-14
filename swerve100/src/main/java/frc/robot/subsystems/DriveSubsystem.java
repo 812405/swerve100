@@ -7,6 +7,7 @@ package frc.robot.subsystems;
 import com.kauailabs.navx.frc.AHRS;
 
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
@@ -27,28 +28,28 @@ public class DriveSubsystem extends SubsystemBase {
 
   public static final int kFrontLeftTurningMotorPort = 4;
   public static final int kFrontLeftAngleRange = 893;
-  public static final int kFrontLeftAngleZero = 838;
+  public static final int kFrontLeftAngleZero = 790;
 
   public static final int kRearLeftTurningMotorPort = 5;
-  public static final int kRearLeftAngleRange = 880;
-  public static final int kRearLeftAngleZero = 841;
+  public static final int kRearLeftAngleRange = 855;
+  public static final int kRearLeftAngleZero = 850;
 
   public static final int kFrontRightTurningMotorPort = 11;
-  public static final int kFrontRightAngleRange = 893;
-  public static final int kFrontRightAngleZero = 660;
+  public static final int kFrontRightAngleRange = 830;
+  public static final int kFrontRightAngleZero = 675;
 
   public static final int kRearRightTurningMotorPort = 10;
   public static final int kRearRightAngleRange = 886;
-  public static final int kRearRightAngleZero = 192;
+  public static final int kRearRightAngleZero = 200;
 
   public static final boolean kFrontLeftTurningEncoderReversed = false;
   public static final boolean kRearLeftTurningEncoderReversed = true;
   public static final boolean kFrontRightTurningEncoderReversed = false;
   public static final boolean kRearRightTurningEncoderReversed = true;
 
-  public static final boolean kFrontLeftDriveEncoderReversed = false;
+  public static final boolean kFrontLeftDriveEncoderReversed = true;
   public static final boolean kRearLeftDriveEncoderReversed = true;
-  public static final boolean kFrontRightDriveEncoderReversed = false;
+  public static final boolean kFrontRightDriveEncoderReversed =true;
   public static final boolean kRearRightDriveEncoderReversed = true;
 
   public static final double kTrackWidth = 0.5;
@@ -69,11 +70,11 @@ public class DriveSubsystem extends SubsystemBase {
   // for *your* robot's drive.
   // The SysId tool provides a convenient method for obtaining these values for your robot.
   // TODO: add some feedforward.
-  public static final double ksVolts = 1;
-  public static final double kvVoltSecondsPerMeter = 0.8;
-  public static final double kaVoltSecondsSquaredPerMeter = 0.15;
+  public static final double ksVolts = 2;
+  public static final double kvVoltSecondsPerMeter = 2.0;
+  public static final double kaVoltSecondsSquaredPerMeter = 0.5;
 
-  public static final double kMaxSpeedMetersPerSecond = 3;
+  public static final double kMaxSpeedMetersPerSecond = 2;
   
   // Robot swerve modules
   private final SwerveModule m_frontLeft = SwerveModuleFactory.newSwerveModule(
@@ -113,20 +114,20 @@ public class DriveSubsystem extends SubsystemBase {
           kRearRightAngleZero);
 
   // The gyro sensor.  We have a Nav-X.
-  private final Gyro m_gyro = new AHRS(SerialPort.Port.kUSB);
-
+  private final AHRS m_gyro;
   // Odometry class for tracking robot pose
-  SwerveDriveOdometry m_odometry =
-      new SwerveDriveOdometry(kDriveKinematics, m_gyro.getRotation2d());
-
+  SwerveDriveOdometry m_odometry;
+      
   public DriveSubsystem() {
+    m_gyro = new AHRS(SerialPort.Port.kUSB);
+    m_odometry = new SwerveDriveOdometry(kDriveKinematics, Rotation2d.fromDegrees(-m_gyro.getFusedHeading()));
     SmartDashboard.putData("Drive Subsystem", this);
   }
 
   @Override
   public void periodic() {
     m_odometry.update(
-        m_gyro.getRotation2d(),
+        Rotation2d.fromDegrees(-m_gyro.getFusedHeading()),
         m_frontLeft.getState(),
         m_frontRight.getState(),
         m_rearLeft.getState(),
@@ -138,7 +139,7 @@ public class DriveSubsystem extends SubsystemBase {
   }
 
   public void resetOdometry(Pose2d pose) {
-    m_odometry.resetPosition(pose, m_gyro.getRotation2d());
+    m_odometry.resetPosition(pose, Rotation2d.fromDegrees(-m_gyro.getFusedHeading()));
   }
 
   /**
@@ -151,26 +152,29 @@ public class DriveSubsystem extends SubsystemBase {
    */
   @SuppressWarnings("ParameterName")
   public void drive(double xSpeed, double ySpeed, double rot, boolean fieldRelative) {
+    if (Math.abs(xSpeed)<.1) xSpeed=0;
+    if (Math.abs(ySpeed)<.1) ySpeed=0;
+    if (Math.abs(rot)<.1) rot=0;
     var swerveModuleStates =
         kDriveKinematics.toSwerveModuleStates(
             fieldRelative
-                ? ChassisSpeeds.fromFieldRelativeSpeeds(xSpeed, ySpeed, rot, m_gyro.getRotation2d())
-                : new ChassisSpeeds(xSpeed, ySpeed, rot));
+                ? ChassisSpeeds.fromFieldRelativeSpeeds(kMaxSpeedMetersPerSecond*xSpeed, kMaxSpeedMetersPerSecond*ySpeed, rot, Rotation2d.fromDegrees(-m_gyro.getFusedHeading()))
+                : new ChassisSpeeds(kMaxSpeedMetersPerSecond*xSpeed, kMaxSpeedMetersPerSecond*ySpeed, 5*rot));
     SwerveDriveKinematics.desaturateWheelSpeeds(
         swerveModuleStates, kMaxSpeedMetersPerSecond);
     m_frontLeft.setDesiredState(swerveModuleStates[0]);
-    m_frontRight.setDesiredState(swerveModuleStates[1]);
+    m_frontRight.setDesiredState(new SwerveModuleState(-swerveModuleStates[1].speedMetersPerSecond, swerveModuleStates[1].angle));
     m_rearLeft.setDesiredState(swerveModuleStates[2]);
-    m_rearRight.setDesiredState(swerveModuleStates[3]);
+    m_rearRight.setDesiredState(new SwerveModuleState(-swerveModuleStates[3].speedMetersPerSecond, swerveModuleStates[3].angle));
   }
 
   public void setModuleStates(SwerveModuleState[] desiredStates) {
     SwerveDriveKinematics.desaturateWheelSpeeds(
         desiredStates, kMaxSpeedMetersPerSecond);
     m_frontLeft.setDesiredState(desiredStates[0]);
-    m_frontRight.setDesiredState(desiredStates[1]);
+    m_frontRight.setDesiredState(new SwerveModuleState(-desiredStates[1].speedMetersPerSecond, desiredStates[1].angle));
     m_rearLeft.setDesiredState(desiredStates[2]);
-    m_rearRight.setDesiredState(desiredStates[3]);
+    m_rearRight.setDesiredState(new SwerveModuleState(-desiredStates[3].speedMetersPerSecond, desiredStates[3].angle));
   }
 
   public void test(double[][] desiredOutputs) {
@@ -195,7 +199,7 @@ public class DriveSubsystem extends SubsystemBase {
   }
 
   public double getHeading() {
-    return m_gyro.getRotation2d().getDegrees();
+    return Rotation2d.fromDegrees(-m_gyro.getFusedHeading()).getDegrees();
   }
 
   public double getTurnRate() {
@@ -206,5 +210,7 @@ public class DriveSubsystem extends SubsystemBase {
   public void initSendable(SendableBuilder builder) {
     super.initSendable(builder);
     builder.addDoubleProperty("heading_degrees", this::getHeading, null);
+    builder.addDoubleProperty("translationalx", () -> getPose().getX(), null);
+    builder.addDoubleProperty("translationaly", () -> getPose().getY(), null);
   }
 }
