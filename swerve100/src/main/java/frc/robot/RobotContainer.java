@@ -12,7 +12,10 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.trajectory.Trajectory;
 import edu.wpi.first.math.trajectory.TrajectoryConfig;
 import edu.wpi.first.math.trajectory.TrajectoryGenerator;
+import edu.wpi.first.util.sendable.Sendable;
+import edu.wpi.first.util.sendable.SendableBuilder;
 import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.OIConstants;
 import frc.robot.subsystems.DriveSubsystem;
@@ -28,7 +31,7 @@ import java.util.List;
  * periodic methods (other than the scheduler calls).  Instead, the structure of the robot
  * (including subsystems, commands, and button mappings) should be declared here.
  */
-public class RobotContainer {
+public class RobotContainer implements Sendable {
   // The robot's subsystems
   private final DriveSubsystem m_robotDrive = new DriveSubsystem();
 
@@ -54,9 +57,10 @@ public class RobotContainer {
                     m_driverController.getRightY(),
                     m_driverController.getRightX(),
                     m_driverController.getLeftX(),
-                    false);
+                    true);
                 },
             m_robotDrive));
+            SmartDashboard.putData("Robot Container", this);
   }
 
   /**
@@ -87,7 +91,7 @@ public class RobotContainer {
             // Start at the origin facing the +X direction
             new Pose2d(0, 0, new Rotation2d(0)),
             // Pass through these two interior waypoints, making an 's' curve path
-            List.of(new Translation2d(1, 1), new Translation2d(2, -1)),
+            List.of(new Translation2d(1, 0), new Translation2d(2, 0)),
             // End 3 meters straight ahead of where we started, facing forward
             new Pose2d(3, 0, new Rotation2d(0)),
             config);
@@ -131,5 +135,13 @@ public class RobotContainer {
       {rearRight?driveControl:0, rearRight?turnControl:0}
     };
     m_robotDrive.test(desiredOutputs);
+  }
+
+  @Override
+  public void initSendable(SendableBuilder builder) {
+    builder.setSmartDashboardType("container");
+    builder.addDoubleProperty("right y", () -> m_driverController.getRightY(), null);  
+    builder.addDoubleProperty("right x", () -> m_driverController.getRightX(), null);
+    builder.addDoubleProperty("left x", () -> m_driverController.getLeftX(), null);
   }
 }
