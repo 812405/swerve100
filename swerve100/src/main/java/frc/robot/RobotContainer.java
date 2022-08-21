@@ -4,6 +4,8 @@
 
 package frc.robot;
 
+import java.util.List;
+
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.geometry.Pose2d;
@@ -16,14 +18,15 @@ import edu.wpi.first.util.sendable.Sendable;
 import edu.wpi.first.util.sendable.SendableBuilder;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import frc.robot.Constants.AutoConstants;
-import frc.robot.Constants.OIConstants;
-import frc.robot.subsystems.DriveSubsystem;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SwerveControllerCommand;
 import edu.wpi.first.wpilibj2.command.button.JoystickButton;
-import java.util.List;
+import frc.robot.Constants.AutoConstants;
+import frc.robot.Constants.OIConstants;
+import frc.robot.subsystems.DriveSubsystem;
+//import frc.robot.subsystems.Swerve2DriveSubsystem;
+import frc.robot.subsystems.Swerve2DriveSubsystem;
 
 /*
  * This class is where the bulk of the robot should be declared.  Since Command-based is a
@@ -32,8 +35,10 @@ import java.util.List;
  * (including subsystems, commands, and button mappings) should be declared here.
  */
 public class RobotContainer implements Sendable {
-  // The robot's subsystems
-  private final DriveSubsystem m_robotDrive = new DriveSubsystem();
+  // For the first andymark base
+  //private final DriveSubsystem m_robotDrive = new DriveSubsystem();
+  // For the second andymark base
+   private final Swerve2DriveSubsystem m_robotDrive = new Swerve2DriveSubsystem();
 
   // The driver's controller
   XboxController m_driverController = new XboxController(OIConstants.kDriverControllerPort);
@@ -91,9 +96,9 @@ public class RobotContainer implements Sendable {
             // Start at the origin facing the +X direction
             new Pose2d(0, 0, new Rotation2d(0)),
             // Pass through these two interior waypoints, making an 's' curve path
-            List.of(new Translation2d(1, 0), new Translation2d(2, 0)),
+            List.of(new Translation2d(5, 0), new Translation2d(5, 5), new Translation2d(0, 5)),
             // End 3 meters straight ahead of where we started, facing forward
-            new Pose2d(3, 0, new Rotation2d(0)),
+            new Pose2d(0, 0, new Rotation2d(Math.PI)),
             config);
 
     var thetaController =
@@ -143,5 +148,8 @@ public class RobotContainer implements Sendable {
     builder.addDoubleProperty("right y", () -> m_driverController.getRightY(), null);  
     builder.addDoubleProperty("right x", () -> m_driverController.getRightX(), null);
     builder.addDoubleProperty("left x", () -> m_driverController.getLeftX(), null);
+  }
+  public void resetAHRS() {
+    m_robotDrive.resetAHRS2();
   }
 }
